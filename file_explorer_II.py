@@ -8,50 +8,54 @@ class FileExplorer(tkr.Tk):
 
         self.title("File Explorer")
         self.geometry("800x600")
+    
 
-        
         self.tree = ttk.Treeview(self)
-        self.tree.pack(fill=tkr.BOTH, expand=True)
+        self.tree.pack(side=tkr.LEFT, fill=tkr.BOTH, expand=True)
 
-        
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.scrollbar.pack(side="right", fill="y")
-        self.tree.configure(yscroll=self.scrollbar.set)
+        self.scrollbar.pack(side=tkr.RIGHT, fill=tkr.Y)
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
 
-      
         self.tree["columns"] = ("size", "type")
         self.tree.column("#0", width=300, minwidth=300, stretch=tkr.NO)
         self.tree.column("size", width=100, minwidth=100, stretch=tkr.NO)
         self.tree.column("type", width=100, minwidth=100, stretch=tkr.NO)
 
-    
         self.tree.heading("#0", text="Name", anchor=tkr.W)
         self.tree.heading("size", text="Size", anchor=tkr.W)
         self.tree.heading("type", text="Type", anchor=tkr.W)
 
-        
         self.load_directory(os.path.expanduser("~"))
 
-  
         self.tree.bind("<Double-1>", self.on_double_click)
 
     def load_directory(self, path):
         self.tree.delete(*self.tree.get_children())
 
-   
         parent_node = self.tree.insert("", "end", text=path, open=True, values=("", ""))
         self.populate_tree(parent_node, path)
 
     def populate_tree(self, parent_node, path):
         try:
+            dirs = []
+            files = []
             for item in os.listdir(path):
                 item_path = os.path.join(path, item)
                 if os.path.isdir(item_path):
-                    node = self.tree.insert(parent_node, "end", text=item, values=("", "Folder"))
-                    self.tree.insert(node, "end")
+                    dirs.append(item)
                 else:
-                    size = os.path.getsize(item_path)
-                    self.tree.insert(parent_node, "end", text=item, values=(self.format_size(size), "File"))
+                    files.append((item, os.path.getsize(item_path)))
+            
+            dirs.sort()
+            files.sort(key=lambda x: x[0])
+            
+            for dir in dirs:
+                node = self.tree.insert(parent_node, "end", text=dir, values=("", "Folder"))
+                self.tree.insert(node, "end")
+            
+            for file, size in files:
+                self.tree.insert(parent_node, "end", text=file, values=(self.format_size(size), "File"))
         except PermissionError:
             pass
 
