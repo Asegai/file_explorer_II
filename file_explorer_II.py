@@ -6,7 +6,8 @@ import subprocess
 import tkinter.messagebox as mb
 import sys
 from tkinter import ttk, Toplevel, Entry, Listbox
-from PIL import Image, ImageTk # read https://pypi.org/project/pillow/
+from PIL import Image, ImageTk
+import shutil
 
 
 class FileExplorer(tk.Tk):
@@ -52,6 +53,8 @@ class FileExplorer(tk.Tk):
 
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
+        self.cut_path = None 
+        self.create_context_menu()
 
     def navigate_to_directory(self):
         directory_path = self.directory_entry.get()
@@ -69,9 +72,40 @@ class FileExplorer(tk.Tk):
         if self.directory_entry.get() == self.placeholder_text:
             self.directory_entry.delete(0, tk.END)
             self.directory_entry.config(fg='black')
-    
 
-    #! search window
+    def cut_item(self):
+        selected_item = self.tree.selection()[0]
+        self.cut_path = self.get_full_path(selected_item)
+
+    def paste_item(self):
+        if not self.cut_path:
+            return
+        destination_dir = self.get_full_path(self.tree.selection()[0])
+        if os.path.isdir(self.cut_path):
+            shutil.move(self.cut_path, destination_dir)
+        else:
+            shutil.move(self.cut_path, destination_dir)
+        self.cut_path = None 
+        self.load_directory(destination_dir)
+
+    #! context menu
+    def create_context_menu(self):
+        self.context_menu = tk.Menu(self, tearoff=0)
+        self.context_menu.add_command(label="Cut", command=self.cut_item)
+        self.context_menu.add_command(label="Paste Here", command=self.paste_item)
+        self.context_menu.entryconfig("Paste Here", state="disabled")  # turn off when nothing to cut
+        self.tree.bind("<Button-3>", self.show_context_menu) 
+
+    def show_context_menu(self, event):
+        try:
+            item_id = self.tree.identify_row(event.y)
+            if item_id:
+                self.tree.selection_set(item_id)
+                self.context_menu.entryconfig("Paste Here", state="normal" if self.cut_path else "disabled")
+                self.context_menu.post(event.x_root, event.y_root)
+        except Exception as e:
+            print(f"Error showing context menu: {e}")
+
     def open_search_window(self):
         search_window = Toplevel(self)
         search_window.title("Search")
