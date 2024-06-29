@@ -96,14 +96,45 @@ class FileExplorer(tk.Tk):
         selected_item = self.tree.selection()[0]
         self.copy_path = self.get_full_path(selected_item)
         self.context_menu.entryconfig("Paste Here", state="normal")
+
+    def rename_item(self):
+        selected_item = self.tree.selection()[0]
+        old_name = self.tree.item(selected_item, "text")
+        rename_window = Toplevel(self)
+        rename_window.title("Rename")
+        rename_window.geometry("300x100")
+
+        rename_label = tk.Label(rename_window, text="Enter new name:")
+        rename_label.pack()
+
+        rename_entry = Entry(rename_window)
+        rename_entry.pack()
+        rename_entry.insert(0, old_name)
+
+        rename_button = tk.Button(rename_window, text="Rename", command=lambda: self.perform_rename(selected_item, rename_entry.get(), rename_window))
+        rename_button.pack()
+
+    def perform_rename(self, item_id, new_name, window):
+        old_path = self.get_full_path(item_id)
+        new_path = os.path.join(os.path.dirname(old_path), new_name)
+        try:
+            os.rename(old_path, new_path)
+            self.tree.item(item_id, text=new_name)
+            window.destroy()
+            mb.showinfo("Success", "File/Folder renamed successfully.")
+        except Exception as e:
+            mb.showerror("Error", f"Failed to rename. Error: {e}")
+
     #! context menu
     def create_context_menu(self):
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Cut", command=self.cut_item)
-        self.context_menu.add_command(label="Copy", command=self.copy_item) 
+        self.context_menu.add_command(label="Copy", command=self.copy_item)
         self.context_menu.add_command(label="Paste Here", command=self.paste_item)
+        self.context_menu.add_command(label="Rename", command=self.rename_item)  #
         self.context_menu.entryconfig("Paste Here", state="disabled")
         self.tree.bind("<Button-3>", self.show_context_menu)
+
         #! make rename 
     def show_context_menu(self, event):
         try:
