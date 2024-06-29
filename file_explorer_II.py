@@ -1,36 +1,54 @@
 import os
-import tkinter as tkr
+import tkinter as tk # change name to tk
 from tkinter import ttk
 import ctypes
 import subprocess
 import tkinter.messagebox as mb
 import sys
+from tkinter import ttk, Toplevel, Entry, Listbox
+from PIL import Image, ImageTk # read https://pypi.org/project/pillow/
 
 
-class FileExplorer(tkr.Tk):
+class FileExplorer(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("File Explorer")
         self.geometry("800x600")
 
-        self.tree = ttk.Treeview(self)
-        self.tree.pack(side=tkr.LEFT, fill=tkr.BOTH, expand=True)
+        # button here
+        self.search_icon = ImageTk.PhotoImage(Image.open("C:/Users/aesas/Desktop/file_explorer_II/search.png").resize((20, 20), Image.Resampling.LANCZOS)) # make button smaller
+        self.top_frame = tk.Frame(self)
+        self.top_frame.pack(side=tk.TOP, fill=tk.X)
+        self.bottom_frame = tk.Frame(self)
+        self.bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.search_button = tk.Button(self.top_frame, image=self.search_icon, command=self.open_search_window, padx=0, pady=0)
+        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2, anchor='ne') # put in top right corner
+        self.tree = ttk.Treeview(self.bottom_frame)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.scrollbar.pack(side=tkr.RIGHT, fill=tkr.Y)
+        self.scrollbar = ttk.Scrollbar(self.bottom_frame, orient="vertical", command=self.tree.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         self.tree["columns"] = ("size", "type")
-        self.tree.column("#0", width=300, minwidth=300, stretch=tkr.NO)
-        self.tree.column("size", width=100, minwidth=100, stretch=tkr.NO)
-        self.tree.column("type", width=100, minwidth=100, stretch=tkr.NO)
+        self.tree.column("#0", width=300, minwidth=300, stretch=tk.NO)
+        self.tree.column("size", width=100, minwidth=100, stretch=tk.NO)
+        self.tree.column("type", width=100, minwidth=100, stretch=tk.NO) 
 
-        self.tree.heading("#0", text="Name", anchor=tkr.W)
-        self.tree.heading("size", text="Size", anchor=tkr.W)
-        self.tree.heading("type", text="Type", anchor=tkr.W)
+        self.tree.heading("#0", text="Name", anchor=tk.W)
+        self.tree.heading("size", text="Size", anchor=tk.W)
+        self.tree.heading("type", text="Type", anchor=tk.W)
 
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
+
+    #! search window
+    def open_search_window(self):
+        pass
+
+
+
+
 
     def load_directory(self, path):
         self.tree.delete(*self.tree.get_children())
