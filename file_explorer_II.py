@@ -15,7 +15,11 @@ class FileExplorer(tk.Tk):
         self.title("File Explorer")
         self.geometry("800x600")
 
-        # button here
+        self.top_frame = tk.Frame(self)
+        self.top_frame.pack(side=tk.TOP, fill=tk.X)
+        self.directory_entry = tk.Entry(self.top_frame)
+        self.directory_entry.pack(side=tk.LEFT, padx=2, pady=2)
+        self.directory_entry.bind("<Return>", lambda event: self.navigate_to_directory())
         self.search_icon = ImageTk.PhotoImage(Image.open("C:/Users/aesas/Desktop/file_explorer_II/search.png").resize((20, 20), Image.Resampling.LANCZOS)) # make button smaller
         self.top_frame = tk.Frame(self)
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
@@ -41,6 +45,13 @@ class FileExplorer(tk.Tk):
 
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
+
+    def navigate_to_directory(self):
+        directory_path = self.directory_entry.get()
+        if os.path.exists(directory_path) and os.path.isdir(directory_path):
+            self.load_directory(directory_path)
+        else:
+            mb.showerror("Error", "The specified path does not exist or is not a directory.")
 
     #! search window
     def open_search_window(self):
