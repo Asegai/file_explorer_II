@@ -1,5 +1,5 @@
 import os
-import tkinter as tk # change name to tk
+import tkinter as tk
 from tkinter import ttk
 import ctypes
 import subprocess
@@ -44,10 +44,43 @@ class FileExplorer(tk.Tk):
 
     #! search window
     def open_search_window(self):
-        pass
+        search_window = Toplevel(self)
+        search_window.title("Search")
+        search_window.geometry("300x100")
+
+        search_label = tk.Label(search_window, text="Enter search query:")
+        search_label.pack()
+
+        search_entry = Entry(search_window)
+        search_entry.pack()
+
+        search_button = tk.Button(search_window, text="Search", command=lambda: self.search_directory(search_entry.get()))
+        search_button.pack()
+
+    def search_directory(self, query):
+        root_path = os.path.expanduser("~") 
+        matches = self.filesystem_search(root_path, query.lower())
+        if matches:
+            result_message = "\n".join(matches[:10]) + ("\n..." if len(matches) > 10 else "") 
+            mb.showinfo("Search Complete", f"Found {len(matches)} matches for '{query}'.\n{result_message}")
+        else:
+            mb.showinfo("Search Complete", "No matches found.")
 
 
+    def filesystem_search(self, root_path, query):
+        matches = []
+        for root, dirs, files in os.walk(root_path):
+            for file in files:
+                if query in file.lower():
+                    matches.append(os.path.join(root, file))
+        return matches
 
+    def recursive_search(self, parent, query, matches):
+        for child in self.tree.get_children(parent):
+            item_text = self.tree.item(child, "text")
+            if query in item_text.lower():
+                matches.append(child)
+            self.recursive_search(child, query, matches) 
 
 
     def load_directory(self, path):
