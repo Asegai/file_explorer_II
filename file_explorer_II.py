@@ -37,7 +37,6 @@ class FileExplorer(tk.Tk):
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.search_button.pack(side=tk.RIGHT, padx=2, pady=2)
         self.search_entry = tk.Entry(self.search_frame)
-        #! removed here
         self.scrollbar = ttk.Scrollbar(self.bottom_frame, orient="vertical", command=self.tree.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
@@ -54,6 +53,7 @@ class FileExplorer(tk.Tk):
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
         self.cut_path = None 
+        self.copy_path = None
         self.create_context_menu()
 
     def navigate_to_directory(self):
@@ -78,30 +78,39 @@ class FileExplorer(tk.Tk):
         self.cut_path = self.get_full_path(selected_item)
 
     def paste_item(self):
-        if not self.cut_path:
-            return
         destination_dir = self.get_full_path(self.tree.selection()[0])
-        if os.path.isdir(self.cut_path):
-            shutil.move(self.cut_path, destination_dir)
-        else:
-            shutil.move(self.cut_path, destination_dir)
-        self.cut_path = None 
+        if self.cut_path:  # cut here
+            if os.path.dirname(self.cut_path) == destination_dir:
+                mb.showwarning("Warning", "Pasted File in Same Location as Cut File")
+            else:
+                shutil.move(self.cut_path, destination_dir)
+                self.cut_path = None
+        elif self.copy_path:  # copy here
+            if os.path.isdir(self.copy_path):
+                destination_path = os.path.join(destination_dir, os.path.basename(self.copy_path))
+                shutil.copytree(self.copy_path, destination_path)
+            else:
+                shutil.copy2(self.copy_path, destination_dir)
         self.load_directory(destination_dir)
-
+    def copy_item(self):
+        selected_item = self.tree.selection()[0]
+        self.copy_path = self.get_full_path(selected_item)
+        self.context_menu.entryconfig("Paste Here", state="normal")
     #! context menu
     def create_context_menu(self):
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Cut", command=self.cut_item)
+        self.context_menu.add_command(label="Copy", command=self.copy_item) 
         self.context_menu.add_command(label="Paste Here", command=self.paste_item)
-        self.context_menu.entryconfig("Paste Here", state="disabled")  # turn off when nothing to cut
-        self.tree.bind("<Button-3>", self.show_context_menu) 
-
+        self.context_menu.entryconfig("Paste Here", state="disabled")
+        self.tree.bind("<Button-3>", self.show_context_menu)
+        #! make rename 
     def show_context_menu(self, event):
         try:
             item_id = self.tree.identify_row(event.y)
             if item_id:
                 self.tree.selection_set(item_id)
-                self.context_menu.entryconfig("Paste Here", state="normal" if self.cut_path else "disabled")
+                self.context_menu.entryconfig("Paste Here", state="normal" if self.cut_path or self.copy_path else "disabled")
                 self.context_menu.post(event.x_root, event.y_root)
         except Exception as e:
             print(f"Error showing context menu: {e}")
