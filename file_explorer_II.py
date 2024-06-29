@@ -14,22 +14,29 @@ class FileExplorer(tk.Tk):
         super().__init__()
         self.title("File Explorer")
         self.geometry("800x600")
-
+        
         self.top_frame = tk.Frame(self)
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
-        self.directory_entry = tk.Entry(self.top_frame)
+        self.directory_entry = tk.Entry(self.top_frame, width=95)
         self.directory_entry.pack(side=tk.LEFT, padx=2, pady=2)
+        self.placeholder_text = "Enter Directory Here"
+        self.directory_entry.insert(0, self.placeholder_text)
+        self.directory_entry.bind("<FocusIn>", self.remove_placeholder)
+        self.directory_entry.bind("<FocusOut>", self.add_placeholder)
         self.directory_entry.bind("<Return>", lambda event: self.navigate_to_directory())
         self.search_icon = ImageTk.PhotoImage(Image.open("C:/Users/aesas/Desktop/file_explorer_II/search.png").resize((20, 20), Image.Resampling.LANCZOS)) # make button smaller
-        self.top_frame = tk.Frame(self)
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
         self.bottom_frame = tk.Frame(self)
+        self.search_frame = tk.Frame(self.top_frame) #
+        self.search_button = tk.Button(self.search_frame, image=self.search_icon, command=self.open_search_window, padx=0, pady=0)
+        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2) #
+        self.search_frame.pack(side=tk.RIGHT, fill=tk.X) 
         self.bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.search_button = tk.Button(self.top_frame, image=self.search_icon, command=self.open_search_window, padx=0, pady=0)
-        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2, anchor='ne') # put in top right corner
         self.tree = ttk.Treeview(self.bottom_frame)
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
+        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2)
+        self.search_entry = tk.Entry(self.search_frame)
+        #! removed here
         self.scrollbar = ttk.Scrollbar(self.bottom_frame, orient="vertical", command=self.tree.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
@@ -52,6 +59,17 @@ class FileExplorer(tk.Tk):
             self.load_directory(directory_path)
         else:
             mb.showerror("Error", "The specified path does not exist or is not a directory.")
+
+    def add_placeholder(self, event=None):
+        if not self.directory_entry.get():
+            self.directory_entry.insert(0, self.placeholder_text)
+            self.directory_entry.config(fg='#C0C0C0')
+
+    def remove_placeholder(self, event=None):
+        if self.directory_entry.get() == self.placeholder_text:
+            self.directory_entry.delete(0, tk.END)
+            self.directory_entry.config(fg='black')
+    
 
     #! search window
     def open_search_window(self):
