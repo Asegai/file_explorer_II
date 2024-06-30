@@ -5,9 +5,10 @@ import ctypes
 import subprocess
 import tkinter.messagebox as mb
 import sys
-from tkinter import ttk, Toplevel, Entry, Listbox
+from tkinter import ttk, Toplevel, Entry, Listbox, messagebox
 from PIL import Image, ImageTk
 import shutil
+import time
 
 
 class FileExplorer(tk.Tk):
@@ -15,6 +16,7 @@ class FileExplorer(tk.Tk):
         super().__init__()
         self.title("File Explorer")
         self.geometry("800x600")
+        self.iconbitmap("C:/Users/aesas/Desktop/file_explorer_II/icon.ico")
         
         self.top_frame = tk.Frame(self)
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
@@ -55,7 +57,7 @@ class FileExplorer(tk.Tk):
         self.cut_path = None 
         self.copy_path = None
         self.create_context_menu()
-
+    
     def navigate_to_directory(self):
         directory_path = self.directory_entry.get()
         if os.path.exists(directory_path) and os.path.isdir(directory_path):
@@ -77,6 +79,19 @@ class FileExplorer(tk.Tk):
         selected_item = self.tree.selection()[0]
         self.cut_path = self.get_full_path(selected_item)
 
+    def delete_item(self):
+        selected_item = self.tree.selection()[0]
+        full_path = self.get_full_path(selected_item)
+        if mb.askyesno("Delete", "This item won't be available in the recycle bin, Are you sure you want to delete this item?"):
+            try:
+                if os.path.isdir(full_path):
+                    shutil.rmtree(full_path)
+                else:
+                    os.remove(full_path)
+                self.load_directory(os.path.dirname(full_path))
+            except Exception as e:
+                mb.showerror("Error", f"Failed to delete. Error: {e}")
+
     def paste_item(self):
         destination_dir = self.get_full_path(self.tree.selection()[0])
         if self.cut_path:  # cut here
@@ -96,6 +111,24 @@ class FileExplorer(tk.Tk):
         selected_item = self.tree.selection()[0]
         self.copy_path = self.get_full_path(selected_item)
         self.context_menu.entryconfig("Paste Here", state="normal")
+
+    def show_properties(self):
+        item_id = self.tree.selection()[0]
+        item_path = self.get_full_path(item_id)
+        if os.path.exists(item_path):
+            size = os.path.getsize(item_path)
+            creation_time = time.ctime(os.path.getctime(item_path))
+            modification_time = time.ctime(os.path.getmtime(item_path))
+            if os.path.isdir(item_path):
+                item_type = "Directory"
+                properties_message = f"Type: {item_type}\nSize: {self.format_size(size)}\nCreated: {creation_time}\nModified: {modification_time}"
+            else:
+                item_type = "File"
+                _, extension = os.path.splitext(item_path)
+                properties_message = f"Type: {item_type}\nExtension: {extension}\nSize: {self.format_size(size)}\nCreated: {creation_time}\nModified: {modification_time}"
+            messagebox.showinfo("Properties", properties_message)
+        else:
+            messagebox.showerror("Error", "The selected item does not exist.")
 
     def rename_item(self):
         selected_item = self.tree.selection()[0]
@@ -131,7 +164,9 @@ class FileExplorer(tk.Tk):
         self.context_menu.add_command(label="Cut", command=self.cut_item)
         self.context_menu.add_command(label="Copy", command=self.copy_item)
         self.context_menu.add_command(label="Paste Here", command=self.paste_item)
-        self.context_menu.add_command(label="Rename", command=self.rename_item)  #
+        self.context_menu.add_command(label="Rename", command=self.rename_item) 
+        self.context_menu.add_command(label="Delete", command=self.delete_item)
+        self.context_menu.add_command(label="Properties", command=self.show_properties)
         self.context_menu.entryconfig("Paste Here", state="disabled")
         self.tree.bind("<Button-3>", self.show_context_menu)
 
