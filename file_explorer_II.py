@@ -27,12 +27,12 @@ class FileExplorer(tk.Tk):
         self.directory_entry.bind("<FocusIn>", self.remove_placeholder)
         self.directory_entry.bind("<FocusOut>", self.add_placeholder)
         self.directory_entry.bind("<Return>", lambda event: self.navigate_to_directory())
-        self.search_icon = ImageTk.PhotoImage(Image.open("C:/Users/aesas/Desktop/file_explorer_II/search.png").resize((20, 20), Image.Resampling.LANCZOS)) # make button smaller
+        self.search_icon = ImageTk.PhotoImage(Image.open("C:/Users/aesas/Desktop/file_explorer_II/search.png").resize((20, 20), Image.Resampling.LANCZOS))
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
         self.bottom_frame = tk.Frame(self)
-        self.search_frame = tk.Frame(self.top_frame) #
+        self.search_frame = tk.Frame(self.top_frame) 
         self.search_button = tk.Button(self.search_frame, image=self.search_icon, command=self.open_search_window, padx=0, pady=0)
-        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2) #
+        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2) 
         self.search_frame.pack(side=tk.RIGHT, fill=tk.X) 
         self.bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.tree = ttk.Treeview(self.bottom_frame)
@@ -51,7 +51,8 @@ class FileExplorer(tk.Tk):
         self.tree.heading("#0", text="Name", anchor=tk.W)
         self.tree.heading("size", text="Size", anchor=tk.W)
         self.tree.heading("type", text="Type", anchor=tk.W)
-
+       
+        self.favorites = set() 
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
         self.cut_path = None 
@@ -94,13 +95,14 @@ class FileExplorer(tk.Tk):
 
     def paste_item(self):
         destination_dir = self.get_full_path(self.tree.selection()[0])
-        if self.cut_path:  # cut here
+        if self.cut_path: 
             if os.path.dirname(self.cut_path) == destination_dir:
                 mb.showwarning("Warning", "Pasted File in Same Location as Cut File")
             else:
                 shutil.move(self.cut_path, destination_dir)
                 self.cut_path = None
-        elif self.copy_path:  # copy here
+        elif self.copy_path:
+
             if os.path.isdir(self.copy_path):
                 destination_path = os.path.join(destination_dir, os.path.basename(self.copy_path))
                 shutil.copytree(self.copy_path, destination_path)
@@ -158,7 +160,17 @@ class FileExplorer(tk.Tk):
         except Exception as e:
             mb.showerror("Error", f"Failed to rename. Error: {e}")
 
-    #! context menu
+    def favorite_item(self):
+        selected_item = self.tree.selection()[0]
+        full_path = self.get_full_path(selected_item)
+        if full_path in self.favorites:
+            self.favorites.remove(full_path)
+            mb.showinfo("Favorite", f"Removed {full_path} from favorites.")
+        else:
+            self.favorites.add(full_path)
+            mb.showinfo("Favorite", f"Added {full_path} to favorites.")
+        self.load_directory(os.path.dirname(full_path))
+
     def create_context_menu(self):
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Cut", command=self.cut_item)
@@ -167,10 +179,10 @@ class FileExplorer(tk.Tk):
         self.context_menu.add_command(label="Rename", command=self.rename_item) 
         self.context_menu.add_command(label="Delete", command=self.delete_item)
         self.context_menu.add_command(label="Properties", command=self.show_properties)
+        self.context_menu.add_command(label="Favorite/Unfavorite", command=self.favorite_item)
         self.context_menu.entryconfig("Paste Here", state="disabled")
         self.tree.bind("<Button-3>", self.show_context_menu)
 
-        #! make rename 
     def show_context_menu(self, event):
         try:
             item_id = self.tree.identify_row(event.y)
@@ -249,13 +261,26 @@ class FileExplorer(tk.Tk):
             
             dirs.sort()
             files.sort(key=lambda x: (x[2], x[0]))
-            
-            for dir in dirs:
+
+            favorite_dirs = [d for d in dirs if os.path.join(path, d) in self.favorites]
+            favorite_files = [f for f in files if os.path.join(path, f[0]) in self.favorites]
+            non_favorite_dirs = [d for d in dirs if os.path.join(path, d) not in self.favorites]
+            non_favorite_files = [f for f in files if os.path.join(path, f[0]) not in self.favorites]
+
+            for dir in favorite_dirs:
                 node = self.tree.insert(parent_node, "end", text=dir, values=("", "Folder"))
                 self.tree.insert(node, "end")
-            
-            for file, size, extension in files:
+
+            for file, size, extension in favorite_files:
                 self.tree.insert(parent_node, "end", text=file, values=(self.format_size(size), extension.upper() if extension != "Unknown" else extension))
+
+            for dir in non_favorite_dirs:
+                node = self.tree.insert(parent_node, "end", text=dir, values=("", "Folder"))
+                self.tree.insert(node, "end")
+
+            for file, size, extension in non_favorite_files:
+                self.tree.insert(parent_node, "end", text=file, values=(self.format_size(size), extension.upper() if extension != "Unknown" else extension))
+
         except PermissionError:
             if not self.is_admin() and self.try_run_as_admin():
                 return
