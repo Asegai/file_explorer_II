@@ -9,15 +9,18 @@ from tkinter import ttk, Toplevel, Entry, Listbox, messagebox
 from PIL import Image, ImageTk
 import shutil
 import time
-
+import json
 
 class FileExplorer(tk.Tk):
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    FAVORITES_FILE = os.path.join(BASE_DIR, "favorites.json")
+
     def __init__(self):
         super().__init__()
         self.title("File Explorer")
         self.geometry("800x600")
-        self.iconbitmap("C:/Users/aesas/Desktop/file_explorer_II/icon.ico")
-        
+        self.iconbitmap(os.path.join(self.BASE_DIR, "icon.ico"))
+
         self.top_frame = tk.Frame(self)
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
         self.directory_entry = tk.Entry(self.top_frame, width=95)
@@ -27,13 +30,14 @@ class FileExplorer(tk.Tk):
         self.directory_entry.bind("<FocusIn>", self.remove_placeholder)
         self.directory_entry.bind("<FocusOut>", self.add_placeholder)
         self.directory_entry.bind("<Return>", lambda event: self.navigate_to_directory())
-        self.search_icon = ImageTk.PhotoImage(Image.open("C:/Users/aesas/Desktop/file_explorer_II/search.png").resize((20, 20), Image.Resampling.LANCZOS))
+
+        self.search_icon = ImageTk.PhotoImage(Image.open(os.path.join(self.BASE_DIR, "search.png")).resize((20, 20), Image.Resampling.LANCZOS))
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
         self.bottom_frame = tk.Frame(self)
-        self.search_frame = tk.Frame(self.top_frame) 
+        self.search_frame = tk.Frame(self.top_frame)
         self.search_button = tk.Button(self.search_frame, image=self.search_icon, command=self.open_search_window, padx=0, pady=0)
-        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2) 
-        self.search_frame.pack(side=tk.RIGHT, fill=tk.X) 
+        self.search_button.pack(side=tk.RIGHT, padx=2, pady=2)
+        self.search_frame.pack(side=tk.RIGHT, fill=tk.X)
         self.bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.tree = ttk.Treeview(self.bottom_frame)
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -46,19 +50,25 @@ class FileExplorer(tk.Tk):
         self.tree["columns"] = ("size", "type")
         self.tree.column("#0", width=300, minwidth=300, stretch=tk.NO)
         self.tree.column("size", width=100, minwidth=100, stretch=tk.NO)
-        self.tree.column("type", width=100, minwidth=100, stretch=tk.NO) 
+        self.tree.column("type", width=100, minwidth=100, stretch=tk.NO)
 
         self.tree.heading("#0", text="Name", anchor=tk.W)
         self.tree.heading("size", text="Size", anchor=tk.W)
         self.tree.heading("type", text="Type", anchor=tk.W)
-       
-        self.favorites = set() 
+
+        self.favorites = self.load_favorites()
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
-        self.cut_path = None 
+        self.cut_path = None
         self.copy_path = None
         self.create_context_menu()
-    
+
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def on_close(self):
+        self.save_favorites()
+        self.destroy()
+
     def navigate_to_directory(self):
         directory_path = self.directory_entry.get()
         if os.path.exists(directory_path) and os.path.isdir(directory_path):
@@ -95,20 +105,20 @@ class FileExplorer(tk.Tk):
 
     def paste_item(self):
         destination_dir = self.get_full_path(self.tree.selection()[0])
-        if self.cut_path: 
+        if self.cut_path:
             if os.path.dirname(self.cut_path) == destination_dir:
                 mb.showwarning("Warning", "Pasted File in Same Location as Cut File")
             else:
                 shutil.move(self.cut_path, destination_dir)
                 self.cut_path = None
         elif self.copy_path:
-
             if os.path.isdir(self.copy_path):
                 destination_path = os.path.join(destination_dir, os.path.basename(self.copy_path))
                 shutil.copytree(self.copy_path, destination_path)
             else:
                 shutil.copy2(self.copy_path, destination_dir)
         self.load_directory(destination_dir)
+
     def copy_item(self):
         selected_item = self.tree.selection()[0]
         self.copy_path = self.get_full_path(selected_item)
@@ -169,6 +179,7 @@ class FileExplorer(tk.Tk):
         else:
             self.favorites.add(full_path)
             mb.showinfo("Favorite", f"Added {full_path} to favorites.")
+        self.save_favorites()
         self.load_directory(os.path.dirname(full_path))
 
     def create_context_menu(self):
@@ -176,7 +187,7 @@ class FileExplorer(tk.Tk):
         self.context_menu.add_command(label="Cut", command=self.cut_item)
         self.context_menu.add_command(label="Copy", command=self.copy_item)
         self.context_menu.add_command(label="Paste Here", command=self.paste_item)
-        self.context_menu.add_command(label="Rename", command=self.rename_item) 
+        self.context_menu.add_command(label="Rename", command=self.rename_item)
         self.context_menu.add_command(label="Delete", command=self.delete_item)
         self.context_menu.add_command(label="Properties", command=self.show_properties)
         self.context_menu.add_command(label="Favorite/Unfavorite", command=self.favorite_item)
@@ -208,14 +219,13 @@ class FileExplorer(tk.Tk):
         search_button.pack()
 
     def search_directory(self, query):
-        root_path = os.path.expanduser("~") 
+        root_path = os.path.expanduser("~")
         matches = self.filesystem_search(root_path, query.lower())
         if matches:
-            result_message = "\n".join(matches[:10]) + ("\n..." if len(matches) > 10 else "") 
+            result_message = "\n".join(matches[:10]) + ("\n..." if len(matches) > 10 else "")
             mb.showinfo("Search Complete", f"Found {len(matches)} matches for '{query}'.\n{result_message}")
         else:
             mb.showinfo("Search Complete", "No matches found.")
-
 
     def filesystem_search(self, root_path, query):
         matches = []
@@ -230,8 +240,7 @@ class FileExplorer(tk.Tk):
             item_text = self.tree.item(child, "text")
             if query in item_text.lower():
                 matches.append(child)
-            self.recursive_search(child, query, matches) 
-
+            self.recursive_search(child, query, matches)
 
     def load_directory(self, path):
         self.tree.delete(*self.tree.get_children())
@@ -246,7 +255,6 @@ class FileExplorer(tk.Tk):
         except:
             return False
 
-
     def populate_tree(self, parent_node, path):
         try:
             dirs = []
@@ -258,7 +266,7 @@ class FileExplorer(tk.Tk):
                 else:
                     extension = os.path.splitext(item)[1][1:] if os.path.splitext(item)[1] else "Unknown"
                     files.append((item, os.path.getsize(item_path), extension))
-            
+
             dirs.sort()
             files.sort(key=lambda x: (x[2], x[0]))
 
@@ -287,14 +295,13 @@ class FileExplorer(tk.Tk):
             else:
                 mb.showerror("Access Denied", "You do not have permission to access this directory.")
 
-    
     def try_run_as_admin(self):
         """Attempt to re-run the application with admin rights only if not already running as admin."""
         if self.is_admin():
             return True
         try:
             ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-            sys.exit(0)  
+            sys.exit(0)
         except Exception as e:
             print(f"Error elevating privileges: {e}")
             return False
@@ -321,6 +328,17 @@ class FileExplorer(tk.Tk):
             if size < 1024.0:
                 return f"{size:.1f} {unit}"
             size /= 1024.0
+
+    def load_favorites(self):
+        try:
+            with open(self.FAVORITES_FILE, 'r') as f:
+                return set(json.load(f))
+        except FileNotFoundError:
+            return set()
+
+    def save_favorites(self):
+        with open(self.FAVORITES_FILE, 'w') as f:
+            json.dump(list(self.favorites), f)
 
 if __name__ == "__main__":
     app = FileExplorer()
