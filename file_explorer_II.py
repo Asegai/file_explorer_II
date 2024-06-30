@@ -9,6 +9,7 @@ from tkinter import ttk, Toplevel, Entry, Listbox, messagebox
 from PIL import Image, ImageTk
 import shutil
 import time
+import json 
 
 class FileExplorer(tk.Tk):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
