@@ -14,6 +14,9 @@ import json
 class FileExplorer(tk.Tk):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     FAVORITES_FILE = os.path.join(BASE_DIR, "favorites.json")
+    exe_icon_path = os.path.join(BASE_DIR, "exe.ico")
+    folder_icon_path = os.path.join(BASE_DIR, "folder.ico")
+    text_icon_path = os.path.join(BASE_DIR, "image_2024-07-01_163309914.ico")
 
     def __init__(self):
         super().__init__()
@@ -57,6 +60,9 @@ class FileExplorer(tk.Tk):
         self.tree.heading("type", text="Type", anchor=tk.W)
 
         self.favorites = self.load_favorites()
+
+        self.load_icons()
+
         self.load_directory(os.path.expanduser("~"))
         self.tree.bind("<Double-1>", self.on_double_click)
         self.cut_paths = []
@@ -64,6 +70,25 @@ class FileExplorer(tk.Tk):
         self.create_context_menu()
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def load_icons(self):
+        try:
+            self.folder_icon = ImageTk.PhotoImage(Image.open(self.folder_icon_path).resize((16, 16), Image.LANCZOS))
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load folder icon. Error: {e}")
+            self.folder_icon = None
+
+        try:
+            self.text_icon = ImageTk.PhotoImage(Image.open(self.text_icon_path).resize((16, 16), Image.LANCZOS))
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load text icon. Error: {e}")
+            self.text_icon = None
+
+        try:
+            self.exe_icon = ImageTk.PhotoImage(Image.open(self.exe_icon_path).resize((16, 16), Image.LANCZOS))
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load exe icon. Error: {e}")
+            self.exe_icon = None
 
     def on_close(self):
         self.save_favorites()
@@ -194,7 +219,6 @@ class FileExplorer(tk.Tk):
             else:
                 self.favorites.add(full_path)
                 messagebox.showinfo("Favorite", f"Added {full_path} to favorites.")
-        
         self.save_favorites()
         self.load_directory(os.path.dirname(full_path))
 
@@ -277,24 +301,34 @@ class FileExplorer(tk.Tk):
             non_favorite_files = [f for f in files if os.path.join(path, f[0]) not in self.favorites]
 
             for dir in favorite_dirs:
-                node = self.tree.insert(parent_node, "end", text=dir, values=("", "Folder"))
+                node = self.tree.insert(parent_node, "end", text=dir, image=self.folder_icon if self.folder_icon else "", values=("", "Folder"))
                 self.tree.insert(node, "end")
 
             for file, size, extension in favorite_files:
-                self.tree.insert(parent_node, "end", text=file, values=(self.format_size(size), extension.upper() if extension != "Unknown" else extension))
+                icon = self.get_icon_for_extension(extension)
+                self.tree.insert(parent_node, "end", text=file, image=icon if icon else "", values=(self.format_size(size), extension.upper() if extension != "Unknown" else extension))
 
             for dir in non_favorite_dirs:
-                node = self.tree.insert(parent_node, "end", text=dir, values=("", "Folder"))
+                node = self.tree.insert(parent_node, "end", text=dir, image=self.folder_icon if self.folder_icon else "", values=("", "Folder"))
                 self.tree.insert(node, "end")
 
             for file, size, extension in non_favorite_files:
-                self.tree.insert(parent_node, "end", text=file, values=(self.format_size(size), extension.upper() if extension != "Unknown" else extension))
+                icon = self.get_icon_for_extension(extension)
+                self.tree.insert(parent_node, "end", text=file, image=icon if icon else "", values=(self.format_size(size), extension.upper() if extension != "Unknown" else extension))
 
         except PermissionError:
             if not self.is_admin() and self.try_run_as_admin():
                 return
             else:
                 messagebox.showerror("Access Denied", "You do not have permission to access this directory.")
+
+    def get_icon_for_extension(self, extension):
+        if extension in ["pdf", "txt", "py", "html", "doc", "docx"]:
+            return self.text_icon
+        elif extension == "exe":
+            return self.exe_icon
+        else:
+            return "" 
 
     def is_admin(self):
         try:
